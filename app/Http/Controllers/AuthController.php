@@ -20,12 +20,11 @@ class AuthController extends Controller {
         $user = User::create([
             'name' =>$request->name,
             'username' =>$request->username,
-            'password' =>$bcrypt->($request->password),
+            'password' => bcrypt($request->password),
+        ]);
 
             return redirect()->route('login')->with('succes',
             'Registrasi berhasil');
-
-        ])
     }
 
     public function showLoginForm() {
