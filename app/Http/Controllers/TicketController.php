@@ -14,7 +14,11 @@ class TicketController extends Controller
     public function index()
     {
         $title = 'Daftar Tiket';
-        $tickets = Ticket::where('user_id', Auth::id())->get();
+
+        $tickets = (Auth::user()->role == 'admin')
+            ? Ticket::with('user')->get()
+            : Ticket::where('user_id', Auth::id())->get();
+
         return view('tickets.index', compact('tickets', 'title'));
     }
 
@@ -23,7 +27,7 @@ class TicketController extends Controller
      */
     public function create()
     {
-        $title ='Buat Tiket Baru';
+        $title = 'Buat Tiket Baru';
         return view('tickets.create', compact('title'));
     }
 
@@ -32,7 +36,28 @@ class TicketController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'title' => 'required|max:255',
+            'description' => 'required',
+           'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5000',
+
+        ]);
+
+        $photoPath = null;
+
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('tickets', 'public');
+        }
+
+        Ticket::create([
+            'user_id' => Auth::id(),
+            'title' => $request->title,
+            'description' => $request->description,
+            'photo' => $photoPath,
+        ]);
+
+        return redirect()->route('tickets.index')
+            ->with('success', 'Tiket berhasil dibuat.');
     }
 
     /**
@@ -40,28 +65,42 @@ class TicketController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $title = 'Detail Tiket';
+
+        $ticket = Ticket::findOrFail($id);
+
+        if (Auth::user()->role == 'user' && $ticket->user_id != Auth::id()) {
+            abort(403);
+        }
+
+        return view('tickets.show', compact('title', 'ticket'));
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Update ticket status (admin only).
      */
+    public function updateStatus(Request $request, Ticket $ticket)
+    {
+        if (Auth::user()->role !== 'admin') {
+            abort(403);
+        }
+
+        $ticket->update(['status' => $request->status]);
+
+        return redirect()->route('tickets.index')
+            ->with('success', 'Status tiket diperbarui.');
+    }
+
     public function edit(string $id)
     {
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         //
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
         //
